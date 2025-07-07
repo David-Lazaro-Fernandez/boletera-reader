@@ -208,7 +208,7 @@ class _NormalModeScreenState extends State<NormalModeScreen>
   
   AudioPlayer audioPlayer = AudioPlayer();
   bool _isConnected = true;
-  String _apiUrl = 'http://54.234.106.39:5102';
+  String _apiUrl = 'http://23.22.68.102:5102';
   late api.ApiService _apiService;
   
   Timer? _resetTimer;
@@ -250,7 +250,7 @@ class _NormalModeScreenState extends State<NormalModeScreen>
   void _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _apiUrl = prefs.getString('api_url') ?? 'http://54.234.106.39:5102';
+      _apiUrl = prefs.getString('api_url') ?? 'http://23.22.68.102:5102';
       _apiService = api.ApiService(baseUrl: _apiUrl);
     });
   }
@@ -668,7 +668,7 @@ class _DebugModeScreenState extends State<DebugModeScreen>
   List<TicketInfo> _validationHistory = [];
   int _sessionCount = 0;
   bool _isConnected = true;
-  String _apiUrl = 'http://localhost:5102';
+  String _apiUrl = 'http://23.22.68.102:5102';
   late api.ApiService _apiService;
   AdminMode _adminMode = AdminMode.off;
   
@@ -718,7 +718,7 @@ class _DebugModeScreenState extends State<DebugModeScreen>
   void _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _apiUrl = prefs.getString('api_url') ?? 'http://54.234.106.39:5102';
+      _apiUrl = prefs.getString('api_url') ?? 'http://23.22.68.102:5102';
       _apiService = api.ApiService(baseUrl: _apiUrl);
     });
   }
