@@ -12,19 +12,39 @@ class ApiService {
   // Validate ticket and mark as used
   Future<ApiResponse> validateTicket(String ticketCode) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/validate-ticket'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'ticketCode': ticketCode}),
+      // Extraer ticketId del JSON del QR code
+      String ticketId = _extractTicketId(ticketCode);
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tickets/validate/$ticketId'),
       ).timeout(const Duration(seconds: 10));
       
-      return _handleResponse(response);
+      return _handleResponse(response, originalQrCode: ticketCode);
     } catch (e) {
       return ApiResponse(
         success: false,
         error: 'Error de conexión: $e',
         code: 'CONNECTION_ERROR',
       );
+    }
+  }
+
+  // Extraer ticketId del JSON del QR code
+  String _extractTicketId(String qrCode) {
+    try {
+      // Intentar parsear como JSON
+      final Map<String, dynamic> qrData = jsonDecode(qrCode);
+      
+      // Extraer ticketId del JSON
+      if (qrData.containsKey('ticketId')) {
+        return qrData['ticketId'];
+      }
+      
+      // Si no tiene ticketId, devolver el código original
+      return qrCode;
+    } catch (e) {
+      // Si no es JSON válido, devolver el código original
+      return qrCode;
     }
   }
   
@@ -114,19 +134,31 @@ class ApiService {
     }
   }
   
-  ApiResponse _handleResponse(http.Response response) {
+  ApiResponse _handleResponse(http.Response response, {String? originalQrCode}) {
     final data = jsonDecode(response.body);
     
     if (response.statusCode == 200) {
-      return ApiResponse.fromJson(data);
+      return ApiResponse(
+        success: data['success'] ?? false,
+        message: data['message'],
+        code: data['success'] ? 'SUCCESS' : 'UNKNOWN_ERROR',
+        ticketInfo: data['success'] && data['data'] != null 
+          ? TicketInfo.fromBackendJson(data, originalQrCode: originalQrCode)
+          : null,
+      );
+    } else if (response.statusCode == 404) {
+      return ApiResponse(
+        success: false,
+        error: data['message'] ?? 'Ticket no encontrado',
+        code: 'TICKET_NOT_FOUND',
+        statusCode: response.statusCode,
+      );
     } else {
       return ApiResponse(
         success: false,
-        error: data['error'] ?? 'Error del servidor',
+        error: data['message'] ?? data['error'] ?? 'Error del servidor',
         code: data['code'] ?? 'UNKNOWN_ERROR',
         statusCode: response.statusCode,
-        receivedCode: data['receivedCode'],
-        ticketInfo: data['ticketInfo'] != null ? TicketInfo.fromBackendJson(data['ticketInfo']) : null,
       );
     }
   }
@@ -172,64 +204,4 @@ class ApiResponse {
       usedTickets: json['usedTickets'],
     );
   }
-}
-
-class TicketInfo {
-  final String id;
-  final String type;
-  final String event;
-  final String section;
-  final String seat;
-  final double price;
-  final String holderName;
-  final String issueDate;
-  final String eventDate;
-  final String venue;
-  final String status;
-  final String? scannedAt;
-  final String? qrCode;
-  final bool? isUsed;
-  final DateTime timestamp;
-
-  TicketInfo({
-    required this.id,
-    required this.type,
-    required this.event,
-    required this.section,
-    required this.seat,
-    required this.price,
-    required this.holderName,
-    required this.issueDate,
-    required this.eventDate,
-    required this.venue,
-    required this.status,
-    this.scannedAt,
-    this.qrCode,
-    this.isUsed,
-    required this.timestamp,
-  });
-
-  factory TicketInfo.fromBackendJson(Map<String, dynamic> json) {
-    return TicketInfo(
-      id: json['id'] ?? '',
-      type: json['type'] ?? 'Ticket',
-      event: json['event'] ?? 'Evento desconocido',
-      section: json['section'] ?? '',
-      seat: json['seat'] ?? '',
-      price: (json['price'] ?? 0.0).toDouble(),
-      holderName: json['holderName'] ?? '',
-      issueDate: json['issueDate'] ?? '',
-      eventDate: json['eventDate'] ?? '',
-      venue: json['venue'] ?? '',
-      status: json['status'] ?? 'unknown',
-      scannedAt: json['scannedAt'],
-      qrCode: json['qrCode'],
-      isUsed: json['isUsed'],
-      timestamp: DateTime.now(),
-    );
-  }
-  
-  bool get isValid => status == 'active' && (isUsed != true);
-  
-  String get displayCode => qrCode?.substring(0, 8) ?? id.substring(0, 8);
 } 

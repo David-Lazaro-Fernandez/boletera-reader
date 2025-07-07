@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class TicketInfo {
   final String event;
   final String date;
@@ -26,6 +28,33 @@ class TicketInfo {
       timestamp: DateTime.now(),
       message: json['message'],
       errorCode: json['error_code'],
+    );
+  }
+
+  factory TicketInfo.fromBackendJson(Map<String, dynamic> json, {String? originalQrCode}) {
+    // Maneja la respuesta del backend con estructura:
+    // { "success": true, "message": "...", "data": { "ticketId": "...", "zona": "...", "fila": "...", "asiento": "...", "valid": true } }
+    final data = json['data'] ?? json;
+    
+    // Intentar extraer información del QR original si está disponible
+    Map<String, dynamic>? qrData;
+    if (originalQrCode != null) {
+      try {
+        qrData = jsonDecode(originalQrCode);
+      } catch (e) {
+        // Si no se puede parsear, usar null
+        qrData = null;
+      }
+    }
+    
+    return TicketInfo(
+      event: 'Zona: ${qrData?['zona'] ?? data['zona'] ?? 'N/A'} | Fila: ${qrData?['fila'] ?? data['fila'] ?? 'N/A'} | Asiento: ${qrData?['asiento'] ?? data['asiento'] ?? 'N/A'}',
+      date: DateTime.now().toIso8601String().substring(0, 10),
+      code: qrData?['ticketId'] ?? data['ticketId'] ?? '',
+      isValid: data['valid'] ?? false,
+      timestamp: DateTime.now(),
+      message: json['message'],
+      errorCode: json['success'] == false ? 'VALIDATION_ERROR' : null,
     );
   }
 
